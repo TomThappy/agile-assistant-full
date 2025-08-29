@@ -1,6 +1,6 @@
-# Agile Assistant - Automatisierte Backlog-Generierung
+# 🎩 Pitchdeck Generator - Powered by AI
 
-Ein KI-gestütztes Tool zur automatischen Generierung von Product Backlogs, Roadmaps und anderen agilen Artefakten basierend auf strukturierten User-Inputs.
+Ein KI-gestütztes Tool zur automatischen Generierung von professionellen Pitchdeck-Gerüsten aus Elevator Pitches. Zusätzlich unterstützt für Product Backlogs, Roadmaps und andere agile Artefakte.
 
 ## 🏗️ Architektur
 
@@ -12,10 +12,16 @@ agile-assistant-full/
 │   │   │   ├── api/generate/    # Hauptendpoint für AI-Generierung
 │   │   │   ├── layout.tsx       # App Layout
 │   │   │   └── page.tsx         # Hauptformular
-│   │   └── components/
-│   │       ├── FormField.tsx    # Erweiterte Form-Komponente
-│   │       ├── LoadingIndicator.tsx # Progress-Animation
-│   │       └── Card.tsx         # Flexible Card-Komponente
+│   │   ├── components/
+│   │   │   ├── FormField.tsx    # Erweiterte Form-Komponente
+│   │   │   ├── LoadingIndicator.tsx # Progress-Animation
+│   │   │   ├── Card.tsx         # Flexible Card-Komponente
+│   │   │   ├── StepDialog.tsx   # 5-Schritte Pitchdeck-Dialog
+│   │   │   ├── PitchSlide.tsx   # Einzelne Slide-Darstellung
+│   │   │   ├── PitchdeckViewer.tsx # Komplette Deck-Ansicht
+│   │   │   └── MissingInfoDialog.tsx # Follow-up für fehlende Daten
+│   │   └── types/
+│   │       └── pitchdeck.ts     # TypeScript Definitionen
 ├── backend/                  # Express.js API (Port 3001)
 │   ├── services/
 │   │   ├── llm.js              # Claude & OpenAI API-Calls
@@ -32,11 +38,18 @@ agile-assistant-full/
 
 ## 🚀 Features
 
+### 🎩 Pitchdeck-Generierung (NEU)
+- **5-Schritte Dialog**: Projektname → Elevator Pitch → Kontext → Zielgruppe
+- **14-Slide-Gerüst**: Von Cover bis Kontakt mit investor-optimierter Struktur  
+- **Missing-Info Follow-up**: Intelligente Nachfragen für stärkere Pitchdecks
+- **Slide-Navigation**: Übersicht und Detail-Ansicht mit visuellen Elementen
+- **Auto-Save & Resume**: Automatisches Speichern und Fortsetzen von Entwürfen
+
 ### Automatisierte Backlog-Generierung
 - **7-Fragen-Framework**: Strukturierte Eingabe für outcome-basierte Artefakte
 - **Multi-Provider-Support**: OpenAI GPT-4o-mini & Anthropic Claude
 - **Flexible Ausgaben**: JSON oder Markdown Format
-- **Multiple Use-Cases**: Backlog, Roadmap, Estimation, Retrospective
+- **Multiple Use-Cases**: **Pitchdeck**, Backlog, Roadmap, Estimation, Retrospective
 
 ### Performance & Reliability
 - **Response-Caching**: 1h TTL mit LRU-Eviction (bis zu 100% Kosteneinsparung bei identischen Requests)
@@ -77,7 +90,24 @@ npm run test:coverage    # Mit Coverage-Report
 #### `POST /generate`
 Hauptendpoint für AI-Generierung mit Cache-Support und Validation.
 
-**Request:**
+**Pitchdeck Request:**
+```json
+{
+  "usecase": "pitchdeck",
+  "structure": "epics_stories", 
+  "format": "json",
+  "provider": "claude",
+  "answers": {
+    "project_name": "HappyNest",
+    "elevator_pitch": "HappyNest ist das digitale Zuhause für moderne Familien. Unsere App vereint Organisation und emotionale Unterstützung - mit smartem Kalender, Kostenaufteilung und KI-Mediation.",
+    "geo_focus": "DACH → EU → Global",
+    "time_horizon": "bis 2030",
+    "target_audience": "Pre-Seed VCs, Business Angels"
+  }
+}
+```
+
+**Backlog Request:**
 ```json
 {
   "usecase": "backlog",
@@ -102,10 +132,11 @@ Cache-Monitoring für Performance-Überwachung.
 
 ## 🎯 Use-Cases
 
-1. **Backlog**: Product Goal → KRs → Opportunities → Roadmap → PBIs
-2. **Roadmap**: Now-Next-Later Struktur mit Prioritäten
-3. **Estimation**: Relative Schätzung von Stories
-4. **Retro**: ICE-Framework für Retrospectives
+1. **🎩 Pitchdeck**: 14-Slide Gerüst mit Cover, Mission, Problem, Lösung, Markt, GTM, Business Model, Financials, Competition, Roadmap, Team, Ask, Kontakt
+2. **📋 Backlog**: Product Goal → KRs → Opportunities → Roadmap → PBIs
+3. **🗺️ Roadmap**: Now-Next-Later Struktur mit Prioritäten
+4. **📊 Estimation**: Relative Schätzung von Stories
+5. **🔄 Retro**: ICE-Framework für Retrospectives
 
 ## 🔧 Konfiguration
 

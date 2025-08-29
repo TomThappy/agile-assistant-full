@@ -3,7 +3,7 @@
  */
 
 // Required fields for backlog generation
-export const REQUIRED_FIELDS = [
+export const BACKLOG_REQUIRED_FIELDS = [
   { key: "q1_segment", label: "Ziel-Segment/Nutzer", hint: "z. B. Neukunden EU-Shop", minLength: 5 },
   { key: "q2_problem", label: "Problem / JTBD", hint: "konkretes Problem/Job", minLength: 10 },
   { key: "q3_behavior_change", label: "Verhaltensänderung (Outcome)", hint: "z. B. mehr abgeschlossene Checkouts", minLength: 10 },
@@ -13,7 +13,20 @@ export const REQUIRED_FIELDS = [
   { key: "q7_horizon", label: "Zeithorizont & Rollout", hint: "Qx, Pilot % via Flag", minLength: 3 },
 ];
 
-export const VALID_USECASES = ["backlog", "roadmap", "estimation", "retro"];
+// Required fields for pitchdeck generation
+export const PITCHDECK_REQUIRED_FIELDS = [
+  { key: "project_name", label: "Projektname", hint: "Name des Startups/Produkts", minLength: 2 },
+  { key: "elevator_pitch", label: "Elevator Pitch", hint: "2-4 Sätze über das Startup, Zielgruppe und Problem", minLength: 20 },
+];
+
+// Optional fields for pitchdeck (enhance quality but not required)
+export const PITCHDECK_OPTIONAL_FIELDS = [
+  { key: "geo_focus", label: "Geografischer Fokus", hint: "Startmärkte und Expansion", minLength: 5 },
+  { key: "time_horizon", label: "Zeithorizont", hint: "Hauptziele und Meilensteine", minLength: 5 },
+  { key: "target_audience", label: "Zielgruppe für Pitch", hint: "Art der Investoren", minLength: 5 },
+];
+
+export const VALID_USECASES = ["backlog", "roadmap", "estimation", "retro", "pitchdeck"];
 export const VALID_PROVIDERS = ["gpt", "claude"];
 export const VALID_FORMATS = ["json", "markdown"];
 export const VALID_STRUCTURES = ["epics_stories", "only_stories"];
@@ -62,9 +75,9 @@ export function validateRequest(body) {
 }
 
 /**
- * Validate answers completeness and quality
+ * Validate answers completeness and quality based on usecase
  */
-export function validateAnswers(answers) {
+export function validateAnswers(answers, usecase = "backlog") {
   const missing = [];
   const warnings = [];
   
@@ -72,12 +85,31 @@ export function validateAnswers(answers) {
     return { missing: [{ label: "Answers", hint: "Complete answers object is required" }], warnings };
   }
 
-  REQUIRED_FIELDS.forEach((field) => {
+  // Get required fields based on usecase
+  let requiredFields = BACKLOG_REQUIRED_FIELDS;
+  let optionalFields = [];
+  
+  if (usecase === "pitchdeck") {
+    requiredFields = PITCHDECK_REQUIRED_FIELDS;
+    optionalFields = PITCHDECK_OPTIONAL_FIELDS;
+  }
+
+  // Validate required fields
+  requiredFields.forEach((field) => {
     const value = (answers[field.key] || "").trim();
     
     if (!value) {
       missing.push({ label: field.label, hint: field.hint });
     } else if (value.length < field.minLength) {
+      warnings.push(`${field.label}: Response seems too short (${value.length} chars, minimum ${field.minLength})`);
+    }
+  });
+
+  // Check optional fields for quality warnings
+  optionalFields.forEach((field) => {
+    const value = (answers[field.key] || "").trim();
+    
+    if (value && value.length < field.minLength) {
       warnings.push(`${field.label}: Response seems too short (${value.length} chars, minimum ${field.minLength})`);
     }
   });
@@ -123,7 +155,7 @@ export function validateAll(body) {
     return { valid: false, errors: requestErrors, warnings: [] };
   }
   
-  const { missing, warnings: answerWarnings } = validateAnswers(body.answers);
+  const { missing, warnings: answerWarnings } = validateAnswers(body.answers, body.usecase);
   const guidelineWarnings = validateGuidelines(body.guidelines);
   
   return {
