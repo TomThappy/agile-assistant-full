@@ -1,0 +1,176 @@
+{
+  "visual_sections": [
+    {
+      "id": "problem",
+      "title": "Problem",
+      "narrative": "Traditionelle Haustierpflege-Services sind teuer und unpersönlich. Viele Tierbesitzer haben Schwierigkeiten, vertrauenswürdige und erschwingliche Betreuung für ihre Haustiere zu finden, insbesondere für längere Zeiträume. Bestehende Lösungen sind oft starr und bieten wenig Flexibilität.",
+      "status": "visualized",
+      "visual_elements": [
+        {
+          "type": "bar_chart",
+          "title": "Kosten Haustierpflege-Services (€/Tag)",
+          "data": {
+            "categories": ["Tierpension", "Private Sitter", "Familienmitglieder", "HappyNest (geplant)"],
+            "values": [45, 35, 0, 15]
+          },
+          "insights": ["HappyNest bietet 67% Kostenersparnis gegenüber Tierpensionen"],
+          "source": "Marktanalyse 2024"
+        },
+        {
+          "type": "pie_chart", 
+          "title": "Unzufriedenheit mit aktuellen Lösungen",
+          "data": {
+            "segments": [
+              {"label": "Zu teuer", "value": 42, "color": "#FF6B6B"},
+              {"label": "Unflexible Zeiten", "value": 28, "color": "#4ECDC4"}, 
+              {"label": "Mangelndes Vertrauen", "value": 23, "color": "#45B7D1"},
+              {"label": "Schlechte Erreichbarkeit", "value": 7, "color": "#96CEB4"}
+            ]
+          },
+          "insights": ["42% sehen Kosten als Hauptproblem"],
+          "source": "Statista Haustierstudie 2023"
+        }
+      ],
+      "assumptions": [
+        "Kosteneffizienz ist primärer Treiber für Wechsel",
+        "Vertrauensaufbau digital möglich"
+      ]
+    },
+    {
+      "id": "market",
+      "title": "Markt",
+      "narrative": "Der deutsche Haustiermarkt wächst kontinuierlich mit 15,7 Millionen Haushalten, die Haustiere besitzen. Der Service-Bereich (Pflege, Betreuung) repräsentiert einen €890M TAM mit 12% jährlichem Wachstum, getrieben durch demographische Veränderungen und gestiegene Ausgabenbereitschaft.",
+      "status": "visualized",
+      "visual_elements": [
+        {
+          "type": "funnel_chart",
+          "title": "Marktgröße Aufschlüsselung (Deutschland)",
+          "data": {
+            "levels": [
+              {"label": "TAM - Gesamt Haustierpflege", "value": 890000000, "percentage": 100},
+              {"label": "SAM - Haustiersitting Services", "value": 180000000, "percentage": 20.2},
+              {"label": "SOM - Digital vermittelte Services", "value": 18000000, "percentage": 2.0}
+            ]
+          },
+          "insights": ["€18M SOM innerhalb 3-5 Jahre erreichbar"],
+          "source": "Bundesverband Tiernahrung, eigene Analyse"
+        },
+        {
+          "type": "line_chart",
+          "title": "Wachstum Haustier-Services Markt (€M)",
+          "data": {
+            "years": ["2020", "2021", "2022", "2023", "2024", "2025E", "2026E"],
+            "values": [650, 720, 790, 890, 995, 1115, 1250]
+          },
+          "insights": ["12% CAGR - überdurchschnittliches Wachstum"],
+          "source": "Marktanalyse & Prognosen"
+        }
+      ],
+      "assumptions": [
+        "Wachstumstrend hält 5+ Jahre an",
+        "Digital Services gewinnen Marktanteile (20%+ bis 2027)"
+      ]
+    },
+    {
+      "id": "business_model",
+      "title": "Geschäftsmodell",
+      "narrative": "HappyNest operiert als Marketplace mit einer Take-Rate von 18% pro Buchung. Zusätzliche Erlösquellen umfassen Premium-Abos für Betreuer (€29/Monat) und Versicherungsprovisionen (15% der Prämienzahlungen). Das Modell fokussiert auf Network-Effekte und wiederkehrende Transaktionen.",
+      "status": "visualized", 
+      "visual_elements": [
+        {
+          "type": "waterfall_chart",
+          "title": "Revenue Streams Aufschlüsselung (€ pro Jahr bei 10K aktiven Nutzern)",
+          "data": {
+            "components": [
+              {"label": "Commission Revenue (18%)", "value": 720000, "type": "positive"},
+              {"label": "Premium Subscriptions", "value": 180000, "type": "positive"},
+              {"label": "Insurance Commissions", "value": 95000, "type": "positive"},
+              {"label": "Listing Fees", "value": 35000, "type": "positive"}
+            ],
+            "total": 1030000
+          },
+          "insights": ["70% der Erlöse aus Transaktionsprovisionen"],
+          "source": "Business Model Kalkulationen"
+        },
+        {
+          "type": "stacked_bar_chart",
+          "title": "Unit Economics pro Kunde (€)",
+          "data": {
+            "categories": ["Revenue", "Variable Costs", "Contribution Margin"],
+            "stacks": {
+              "Year 1": [103, -35, 68],
+              "Year 2": [156, -42, 114], 
+              "Year 3": [187, -48, 139]
+            }
+          },
+          "insights": ["Contribution Margin steigt auf €139 in Jahr 3"],
+          "source": "Financial Modeling"
+        }
+      ],
+      "assumptions": [
+        "Take-Rate von 18% wird vom Markt akzeptiert",
+        "Premium-Conversion Rate von 25% erreichbar"
+      ]
+    }
+  ],
+  "missing_visual_sections": [
+    "solution",
+    "gtm", 
+    "financials",
+    "competition",
+    "roadmap",
+    "team",
+    "ask"
+  ],
+  "visual_metrics": {
+    "total_charts_generated": 6,
+    "chart_types_used": ["bar_chart", "pie_chart", "funnel_chart", "line_chart", "waterfall_chart", "stacked_bar_chart"],
+    "sections_visualized": 3,
+    "sections_pending": 7,
+    "visual_completion_rate": 0.3
+  },
+  "visual_type_constraints": {
+    "allowed_types": ["bar_chart", "line_chart", "pie_chart", "funnel_chart", "scatter_plot", "waterfall_chart", "stacked_bar_chart", "area_chart"],
+    "forbidden_types": ["3d_chart", "bubble_chart", "radar_chart", "treemap", "heatmap"],
+    "rationale": "Focus on investor-friendly, easy-to-interpret standard business charts"
+  },
+  "data_quality": {
+    "charts_with_sources": 6,
+    "assumptions_documented": 6,
+    "insights_per_chart_avg": 1.2,
+    "data_credibility_score": 0.85
+  },
+  "next_visual_priorities": ["solution", "financials", "competition"],
+  "assumption_log": [
+    {
+      "section": "problem",
+      "chart": "bar_chart_costs",
+      "assumption": "HappyNest pricing competitive at €15/day",
+      "confidence": 0.8,
+      "source": "competitive_analysis",
+      "applied_at": "2024-01-15T10:45:00Z"
+    },
+    {
+      "section": "market",
+      "chart": "funnel_chart_tam_sam_som",
+      "assumption": "Digital services capture 10% of SAM within 5 years",
+      "confidence": 0.7,
+      "source": "digital_adoption_trends", 
+      "applied_at": "2024-01-15T10:45:00Z"
+    }
+  ],
+  "metadata": {
+    "stage": "S3",
+    "project_name": "HappyNest",
+    "generated_at": "2024-01-15T10:45:00Z",
+    "processing_time_ms": 5200,
+    "version": "S3.v1",
+    "visual_engine_version": "charts.v2.1",
+    "inputs_used": {
+      "populated_sections": 3,
+      "user_answers": 2,
+      "assumptions_applied": 12,
+      "external_data_sources": 4
+    }
+  }
+}

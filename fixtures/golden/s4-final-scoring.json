@@ -1,0 +1,236 @@
+{
+  "overall_score": 7.3,
+  "score_breakdown": {
+    "market_opportunity": {
+      "score": 8.2,
+      "weight": 0.25,
+      "components": [
+        {"factor": "market_size", "score": 8.5, "rationale": "€890M TAM with 12% growth is substantial"},
+        {"factor": "market_timing", "score": 8.0, "rationale": "Digital adoption in pet services accelerating"},
+        {"factor": "competition_intensity", "score": 7.8, "rationale": "Fragmented market with no clear leader"}
+      ],
+      "key_strengths": [
+        "Large addressable market with strong growth",
+        "Underdigitalized sector with room for disruption"
+      ],
+      "improvement_areas": [
+        "Need clearer differentiation from emerging competitors"
+      ]
+    },
+    "solution_product_fit": {
+      "score": 7.8,
+      "weight": 0.2,
+      "components": [
+        {"factor": "problem_solution_alignment", "score": 8.2, "rationale": "Clear pain points addressed by platform approach"},
+        {"factor": "feature_completeness", "score": 7.5, "rationale": "Core features defined but missing some advanced capabilities"},
+        {"factor": "scalability_potential", "score": 7.7, "rationale": "Platform model scales well with network effects"}
+      ],
+      "key_strengths": [
+        "Strong product-market fit hypothesis",
+        "Platform approach enables network effects"
+      ],
+      "improvement_areas": [
+        "Need more detailed technical architecture",
+        "Risk assessment for regulatory compliance incomplete"
+      ]
+    },
+    "business_model_viability": {
+      "score": 7.1,
+      "weight": 0.2,
+      "components": [
+        {"factor": "revenue_model_clarity", "score": 8.0, "rationale": "Clear take-rate model with multiple revenue streams"},
+        {"factor": "unit_economics", "score": 6.8, "rationale": "Positive contribution margins but acquisition costs uncertain"},
+        {"factor": "path_to_profitability", "score": 6.5, "rationale": "Path visible but timeline and milestones need refinement"}
+      ],
+      "key_strengths": [
+        "Diversified revenue streams reduce risk",
+        "Strong unit economics at maturity"
+      ],
+      "improvement_areas": [
+        "Customer acquisition cost assumptions need validation",
+        "Clearer path to break-even required"
+      ]
+    },
+    "execution_capability": {
+      "score": 6.2,
+      "weight": 0.15,
+      "components": [
+        {"factor": "team_completeness", "score": 5.8, "rationale": "Key roles identified but experience gaps in marketplace operations"},
+        {"factor": "go_to_market_strategy", "score": 6.5, "rationale": "GTM approach logical but lacks specific execution tactics"},
+        {"factor": "operational_readiness", "score": 6.3, "rationale": "Basic operations planned but scaling procedures undefined"}
+      ],
+      "key_strengths": [
+        "Founder-market fit apparent",
+        "Logical phased rollout approach"
+      ],
+      "improvement_areas": [
+        "Need experienced marketplace operators",
+        "More detailed operational scaling plan required"
+      ]
+    },
+    "financial_projections": {
+      "score": 7.0,
+      "weight": 0.1,
+      "components": [
+        {"factor": "revenue_forecast_credibility", "score": 7.2, "rationale": "Bottom-up projections based on reasonable assumptions"},
+        {"factor": "cost_structure_realism", "score": 7.0, "rationale": "Major cost categories identified with market-rate estimates"},
+        {"factor": "funding_requirements", "score": 6.8, "rationale": "Funding needs aligned with milestones but contingency planning limited"}
+      ],
+      "key_strengths": [
+        "Conservative growth assumptions",
+        "Clear milestone-based funding strategy"
+      ],
+      "improvement_areas": [
+        "More detailed sensitivity analysis needed",
+        "Scenario planning for market downturns"
+      ]
+    },
+    "risk_assessment": {
+      "score": 6.9,
+      "weight": 0.1,
+      "components": [
+        {"factor": "market_risks", "score": 7.2, "rationale": "Key market risks identified with mitigation strategies"},
+        {"factor": "execution_risks", "score": 6.5, "rationale": "Operational risks acknowledged but contingencies incomplete"},
+        {"factor": "competitive_risks", "score": 7.0, "rationale": "Competitive landscape understood with differentiation strategy"}
+      ],
+      "key_strengths": [
+        "Realistic about market challenges",
+        "Proactive risk identification"
+      ],
+      "improvement_areas": [
+        "More robust contingency planning",
+        "Deeper competitive intelligence needed"
+      ]
+    }
+  },
+  "scoring_methodology": {
+    "scale": "1-10 (10 being highest/best)",
+    "weights_total": 1.0,
+    "confidence_level": 0.75,
+    "data_completeness": 0.68,
+    "assumptions_applied": 23,
+    "external_benchmarks_used": 8
+  },
+  "key_investment_highlights": [
+    "Large, growing market with low digital penetration",
+    "Strong problem-solution fit with clear value proposition", 
+    "Scalable platform business model with network effects",
+    "Multiple revenue streams reduce concentration risk"
+  ],
+  "primary_concerns": [
+    "Customer acquisition cost assumptions need validation",
+    "Execution team needs strengthening in key areas",
+    "Regulatory compliance requirements not fully mapped",
+    "Competition intensity may increase rapidly"
+  ],
+  "funding_recommendation": {
+    "stage": "Pre-Seed/Seed appropriate",
+    "amount_range": "€500K - €1.2M",
+    "use_of_funds_priority": [
+      "Team building (35%)",
+      "MVP development (30%)", 
+      "Market validation (20%)",
+      "Legal/compliance (15%)"
+    ],
+    "key_milestones_for_next_round": [
+      "€50K ARR with positive unit economics",
+      "500+ active users (both sides)",
+      "Team complete with experienced COO/CTO",
+      "Regulatory compliance framework established"
+    ]
+  },
+  "comparative_analysis": {
+    "similar_deals_analyzed": 12,
+    "percentile_ranking": 68,
+    "benchmark_categories": [
+      "German B2C Marketplaces",
+      "Pet-tech startups DACH",
+      "Pre-seed consumer platforms"
+    ],
+    "vs_benchmark_summary": "Above average for market opportunity and solution fit, below average for team completeness"
+  },
+  "next_steps_recommended": [
+    {
+      "category": "due_diligence",
+      "action": "Customer interviews with target segments",
+      "timeline": "2 weeks",
+      "priority": "high"
+    },
+    {
+      "category": "team",
+      "action": "Identify and interview potential COO candidates",
+      "timeline": "4 weeks", 
+      "priority": "high"
+    },
+    {
+      "category": "market",
+      "action": "Competitive analysis deep-dive on emerging players",
+      "timeline": "3 weeks",
+      "priority": "medium"
+    },
+    {
+      "category": "product",
+      "action": "Technical architecture and development timeline",
+      "timeline": "2 weeks",
+      "priority": "medium"
+    }
+  ],
+  "assumption_log": [
+    {
+      "category": "market_opportunity",
+      "assumption": "Pet services digital adoption follows other consumer markets (5-year lag)",
+      "confidence": 0.8,
+      "impact_on_score": 0.3,
+      "source": "digital_adoption_analysis"
+    },
+    {
+      "category": "business_model",
+      "assumption": "Customer acquisition cost of €45 achievable through digital marketing",
+      "confidence": 0.6,
+      "impact_on_score": -0.4,
+      "source": "marketplace_benchmarks"
+    },
+    {
+      "category": "execution",
+      "assumption": "Regulatory barriers manageable with standard compliance approach",
+      "confidence": 0.7,
+      "impact_on_score": 0.1,
+      "source": "legal_research"
+    }
+  ],
+  "data_sources": {
+    "user_provided": {
+      "elevator_pitch": true,
+      "answers_count": 2,
+      "completeness": 0.4
+    },
+    "external_research": [
+      "Statista Pet Market Report 2023",
+      "Bundesverband Tiernahrung Market Data",
+      "CB Insights Pet-tech Analysis",
+      "PitchBook Marketplace Benchmarks"
+    ],
+    "assumptions_applied": {
+      "market_sizing": 8,
+      "competitive_analysis": 6,
+      "financial_modeling": 9
+    },
+    "confidence_adjustment": -0.8
+  },
+  "metadata": {
+    "stage": "S4",
+    "project_name": "HappyNest",
+    "generated_at": "2024-01-15T11:00:00Z",
+    "processing_time_ms": 4200,
+    "version": "S4.v1",
+    "scoring_engine": "investment_evaluator.v3.2",
+    "analyst_profile": "pre_seed_generalist",
+    "inputs_used": {
+      "populated_sections": 6,
+      "user_answers": 2,
+      "visual_elements": 6,
+      "assumptions_applied": 23,
+      "external_benchmarks": 8
+    }
+  }
+}
