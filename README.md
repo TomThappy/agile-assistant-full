@@ -1,40 +1,55 @@
-# 🎩 Pitchdeck Generator - Powered by AI
+# Venture Dossier - AI-Powered Investment Analysis System
 
-Ein KI-gestütztes Tool zur automatischen Generierung von professionellen Pitchdeck-Gerüsten aus Elevator Pitches. Zusätzlich unterstützt für Product Backlogs, Roadmaps und andere agile Artefakte.
+**Transform startup pitches into comprehensive investor dossiers using cutting-edge AI models.**
 
-## 🏗️ Architektur
+## 🏆 Overview
 
-```
-agile-assistant-full/
-├── frontend/                 # Next.js Frontend (Port 3000)
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── api/generate/    # Hauptendpoint für AI-Generierung
-│   │   │   ├── layout.tsx       # App Layout
-│   │   │   └── page.tsx         # Hauptformular
-│   │   ├── components/
-│   │   │   ├── FormField.tsx    # Erweiterte Form-Komponente
-│   │   │   ├── LoadingIndicator.tsx # Progress-Animation
-│   │   │   ├── Card.tsx         # Flexible Card-Komponente
-│   │   │   ├── StepDialog.tsx   # 5-Schritte Pitchdeck-Dialog
-│   │   │   ├── PitchSlide.tsx   # Einzelne Slide-Darstellung
-│   │   │   ├── PitchdeckViewer.tsx # Komplette Deck-Ansicht
-│   │   │   └── MissingInfoDialog.tsx # Follow-up für fehlende Daten
-│   │   └── types/
-│   │       └── pitchdeck.ts     # TypeScript Definitionen
-├── backend/                  # Express.js API (Port 3001)
-│   ├── services/
-│   │   ├── llm.js              # Claude & OpenAI API-Calls
-│   │   ├── prompts.js          # Prompt-Loading & Building
-│   │   ├── response.js         # Response-Formatierung
-│   │   └── cache.js            # In-Memory Caching
-│   ├── __tests__/              # Unit Tests
-│   └── index.js                # Express Server
-├── shared/
-│   ├── prompts/                # Zentralisierte AI-Prompts
-│   └── validation.js           # Umfassende Input-Validation
-└── README.md                   # Diese Datei
-```
+The Venture Dossier system has evolved from a simple pitchdeck generator into a sophisticated investment analysis platform that leverages OpenAI's newest models, including o3-mini and GPT-4o, to create institutional-quality investment dossiers.
+
+### Key Features
+
+- **Multi-Stage AI Pipeline**: o3 → GPT-4o → o3 processing chain
+- **Enhanced Question System**: Interactive follow-up questions with assumption tracking
+- **Investment Scoring**: Automated scoring with detailed breakdown
+- **Professional Visualizations**: Investor-grade presentation format
+- **Assumption Tracking**: Transparent handling of missing information
+- **Multi-Language Support**: German and English output
+
+## 🚀 Architecture
+
+### Frontend (Next.js 15)
+- **React 18** with TypeScript
+- **App Router** with API routes
+- **Tailwind CSS** styling
+- **Enhanced UI Components** for professional presentation
+
+### AI Pipeline (4-Stage Processing)
+
+1. **Synthesis Stage** (o3-mini)
+   - Initial dossier creation from basic startup info
+   - Market analysis and competitive landscape
+   - Business model evaluation
+
+2. **Integration Stage** (o3-mini) 
+   - User answer integration
+   - Assumption policy application
+   - Enhanced question processing
+
+3. **Scoring Stage** (o3-mini)
+   - Investment scoring (1-10 scale)
+   - Risk assessment
+   - Detailed scoring breakdown
+
+4. **Polish Stage** (GPT-4o)
+   - Narrative enhancement
+   - Professional language optimization
+   - Final presentation polish
+
+### Enhanced Question System
+- **Smart Questions**: Context-aware follow-up questions
+- **Assumption Tracking**: Transparent handling of missing data
+- **Interactive UI**: Modern dialog-based question interface
+- **Preset Responses**: Quick answer options for common questions
 
 ## 🚀 Features
 
@@ -63,72 +78,94 @@ agile-assistant-full/
 - **Responsive Design**: Funktioniert auf Desktop und Mobile
 - **Intuitive Navigation**: Klare Guidance durch den Prozess
 
-## 🛠️ Entwicklung
+## 📦 Installation
+
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+- OpenAI API key with o3 and GPT-4 access
 
 ### Setup
-```bash
-# Backend
-cd backend
-npm install
-npm start                 # Port 3001
 
-# Frontend  
+1. **Clone the repository**
+   ```bash
+   git clone [your-repo-url]
+   cd agile-assistant-full
+   ```
+
+2. **Install frontend dependencies**
+   ```bash
+   cd frontend
+   npm install
+   ```
+
+3. **Environment configuration**
+   ```bash
+   # Create .env.local in frontend directory
+   OPENAI_API_KEY=your_openai_api_key_here
+   ```
+
+4. **Build the application**
+   ```bash
+   npm run build
+   ```
+
+## 🎯 Usage
+
+### Development Mode
+```bash
 cd frontend
-npm install
-npm run dev              # Port 3000
+npm run dev
 ```
 
-### Tests
+### Production Deployment
 ```bash
-cd backend
-npm test                 # Unit Tests
-npm run test:coverage    # Mit Coverage-Report
+npm run build
+npm run start
 ```
 
-### API-Endpoints
+### API Endpoints
 
-#### `POST /generate`
-Hauptendpoint für AI-Generierung mit Cache-Support und Validation.
+#### `/api/venture-dossier` (POST)
+Main pipeline endpoint supporting staged processing:
 
-**Pitchdeck Request:**
+**Request Body:**
 ```json
 {
-  "usecase": "pitchdeck",
-  "structure": "epics_stories", 
-  "format": "json",
-  "provider": "claude",
-  "answers": {
-    "project_name": "HappyNest",
-    "elevator_pitch": "HappyNest ist das digitale Zuhause für moderne Familien. Unsere App vereint Organisation und emotionale Unterstützung - mit smartem Kalender, Kostenaufteilung und KI-Mediation.",
-    "geo_focus": "DACH → EU → Global",
-    "time_horizon": "bis 2030",
-    "target_audience": "Pre-Seed VCs, Business Angels"
+  "project_name": "string",
+  "elevator_pitch": "string", 
+  "geo_focus": "string (optional)",
+  "time_horizon": "string (optional)",
+  "target_audience": "string (optional)",
+  "user_answers": "object (optional)",
+  "assumptions_selected": "boolean (optional)",
+  "stage": "synthesis|integration|scoring|polish|full"
+}
+```
+
+**Response:**
+```json
+{
+  "dossier": {
+    "executive_summary": "string",
+    "company_overview": "string",
+    "market_analysis": "string",
+    "business_model": "string",
+    "financial_projections": "string",
+    "team": "string",
+    "risk_assessment": "string",
+    "investment_recommendation": "string",
+    "investment_score": "number (1-10)",
+    "scoring_breakdown": "object",
+    "missing_info_questions": "array"
+  },
+  "pipeline_meta": {
+    "steps_completed": "array",
+    "total_processing_time": "number",
+    "models_used": "array"
   }
 }
 ```
-
-**Backlog Request:**
-```json
-{
-  "usecase": "backlog",
-  "structure": "epics_stories", 
-  "format": "json",
-  "provider": "gpt",
-  "answers": {
-    "q1_segment": "EU Neukunden",
-    "q2_problem": "Hohe Checkout-Abbruchrate",
-    "q3_behavior_change": "Mehr Conversions",
-    "q4_metrics": "Abbruchrate 65% → 45%",
-    "q5_constraints": "2 Devs, 8 Wochen", 
-    "q6_assets": "Stripe, Feature-Flags",
-    "q7_horizon": "Q4, 20% Pilot"
-  },
-  "guidelines": "Nutze HEART-Metriken"
-}
-```
-
-#### `GET /cache/stats`
-Cache-Monitoring für Performance-Überwachung.
 
 ## 🎯 Use-Cases
 
@@ -138,32 +175,103 @@ Cache-Monitoring für Performance-Überwachung.
 4. **📊 Estimation**: Relative Schätzung von Stories
 5. **🔄 Retro**: ICE-Framework für Retrospectives
 
-## 🔧 Konfiguration
+## 🧠 AI Models & Prompts
 
-### Umgebungsvariablen
+### Model Selection Strategy
+- **o3-mini**: Complex reasoning, analysis, and scoring tasks
+- **GPT-4o**: Language polishing and narrative enhancement
+- **Fallback**: Automatic fallback to GPT-4o if o3 unavailable
+
+### Prompt Engineering
+All prompts are stored in `/frontend/src/prompts/` and include:
+
+- `dossier-synthesis.md` - Initial dossier creation
+- `answer-integration.md` - User answer processing  
+- `investor-scoring.md` - Investment evaluation
+- `narrative-polish.md` - Final narrative enhancement
+
+### Timeout Handling
+- **o3 models**: 45-second timeout
+- **GPT models**: 30-second timeout
+- **Error Recovery**: Graceful fallbacks and error messages
+
+## 🎨 UI Components
+
+### Core Components
+- **VentureDossierViewer**: Main dossier display component
+- **EnhancedQuestionDialog**: Interactive Q&A interface
+- **LoadingIndicator**: Multi-stage progress display
+- **Card**: Reusable content containers
+
+### Type Definitions
+Comprehensive TypeScript interfaces in:
+- `/frontend/src/types/venture-dossier.ts`
+- `/frontend/src/types/pitchdeck.ts`
+
+## 🔧 Configuration
+
+### Next.js Configuration
+- **Runtime**: Node.js for API routes
+- **Timeout**: 60 seconds for Vercel deployment
+- **Build**: Optimized for production deployment
+
+### Environment Variables
 ```bash
-# Backend (.env)
-ANTHROPIC_API_KEY=your_claude_key_here
-OPENAI_API_KEY=your_openai_key_here
-PORT=3001
-
-# Frontend automatisch über Next.js
+OPENAI_API_KEY=sk-...           # Required: OpenAI API key
+NEXT_PUBLIC_APP_NAME=VentureDossier  # Optional: App branding
 ```
 
-### AI-Provider
-- **Claude**: Haiku-Model für schnelle, kostengünstige Generierung
-- **GPT**: GPT-4o-mini für ausgeglichene Performance/Kosten-Ratio
+## 🚀 Deployment
 
-## 📊 Monitoring
+### Vercel (Recommended)
+1. Connect your GitHub repository to Vercel
+2. Set environment variables in Vercel dashboard
+3. Deploy automatically on push
 
-- Cache-Hit-Rate über `/cache/stats`
-- Request-Logs mit strukturiertem Format
-- Performance-Metriken in Console-Output
+### Manual Deployment
+```bash
+npm run build
+npm run start
+```
 
-## 🔮 Nächste Schritte
+## 🧪 Testing
 
-- [ ] WebSocket-Support für Real-time Updates
-- [ ] Persistente Cache-Layer (Redis)
-- [ ] A/B-Testing für Prompt-Optimierung
-- [ ] Export-Funktionen (JIRA, Azure DevOps)
-- [ ] Team-Collaboration-Features
+### Build Verification
+```bash
+cd frontend
+npm run build  # Verifies successful compilation
+```
+
+### API Testing
+Use tools like Postman or curl to test the `/api/venture-dossier` endpoint with sample data.
+
+## 📋 Recent Updates
+
+### ✅ Completed Features
+- [x] Multi-stage o3 → GPT-4o → o3 pipeline
+- [x] Enhanced question system with presets
+- [x] Assumption tracking and transparency
+- [x] Investment scoring with breakdown
+- [x] Professional dossier viewer component
+- [x] Frontend integration and UI polish
+- [x] Error handling and timeouts
+- [x] Build optimization and deployment readiness
+
+### 🎯 Deployment Ready
+The system is fully functional and ready for deployment with:
+- ✅ Frontend builds successfully
+- ✅ API routes properly configured
+- ✅ All components integrated
+- ✅ Error handling implemented
+- ✅ Professional UI/UX
+- ✅ TypeScript type safety
+
+## 📞 Support
+
+For issues, feature requests, or deployment assistance, please create an issue in the repository.
+
+---
+
+**Status**: ✅ **PRODUCTION READY** 
+**Last Updated**: January 2025
+**Version**: 2.0.0 (Venture Dossier)
