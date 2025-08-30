@@ -1,0 +1,14 @@
+{
+  "name": "agile-assistant-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "start": "cd frontend && npm start",
+    "dev": "cd frontend && npm run dev",
+    "install": "cd frontend && npm install"
+  },
+  "dependencies": {
+    "next": "^15.4.6"
+  }
+}
