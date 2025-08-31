@@ -1,0 +1,271 @@
+name: 🤖 Auto Deploy with CodeRabbit Integration
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_message:
+        description: 'Commit message for changes'
+        required: false
+        default: 'Auto-commit: Latest changes'
+      target_branch:
+        description: 'Target branch for PR (default: main)'
+        required: false
+        default: 'main'
+
+jobs:
+  commit-and-pr:
+    name: 📝 Commit Changes & Create PR
+    runs-on: ubuntu-latest
+    outputs:
+      pr_number: ${{ steps.create_pr.outputs.pr_number }}
+      pr_url: ${{ steps.create_pr.outputs.pr_url }}
+    
+    steps:
+      - name: 📂 Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: 🔧 Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: 📊 Check for changes
+        id: check_changes
+        run: |
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected"
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected"
+          fi
+
+      - name: 💾 Commit and push changes
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          current_branch=$(git branch --show-current)
+          git add .
+          git commit -m "${{ github.event.inputs.commit_message || 'Auto-commit: Latest changes' }}"
+          git push origin $current_branch
+
+      - name: 🔀 Create or update PR
+        id: create_pr
+        if: steps.check_changes.outputs.changes == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          current_branch=$(git branch --show-current)
+          target_branch="${{ github.event.inputs.target_branch || 'main' }}"
+          
+          # Check if PR already exists
+          existing_pr=$(gh pr list --head $current_branch --base $target_branch --json number --jq '.[0].number // empty')
+          
+          if [[ -n "$existing_pr" ]]; then
+            echo "Updating existing PR #$existing_pr"
+            pr_url=$(gh pr view $existing_pr --json url --jq '.url')
+            echo "pr_number=$existing_pr" >> $GITHUB_OUTPUT
+            echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
+          else
+            echo "Creating new PR"
+            pr_url=$(gh pr create \
+              --title "🚀 Auto-deployment: $current_branch" \
+              --body "Automatisch erstellte PR für Deployment aus Branch \`$current_branch\`" \
+              --base $target_branch \
+              --head $current_branch)
+            pr_number=$(echo $pr_url | grep -o '[0-9]\+$')
+            echo "pr_number=$pr_number" >> $GITHUB_OUTPUT
+            echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
+          fi
+
+  wait-for-coderabbit:
+    name: ⏳ Wait for CodeRabbit Review
+    runs-on: ubuntu-latest
+    needs: commit-and-pr
+    if: needs.commit-and-pr.outputs.pr_number != ''
+    outputs:
+      review_completed: ${{ steps.wait_review.outputs.review_completed }}
+    
+    steps:
+      - name: 📂 Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ⏰ Wait for CodeRabbit review
+        id: wait_review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pr_number="${{ needs.commit-and-pr.outputs.pr_number }}"
+          max_attempts=30  # 15 minutes max wait
+          attempt=0
+          
+          echo "Waiting for CodeRabbit review on PR #$pr_number..."
+          
+          while [ $attempt -lt $max_attempts ]; do
+            # Check for CodeRabbit bot comments
+            coderabbit_comments=$(gh api repos/${{ github.repository }}/issues/$pr_number/comments \
+              --jq '.[] | select(.user.login == "coderabbitai[bot]") | .id' | wc -l)
+            
+            if [ $coderabbit_comments -gt 0 ]; then
+              echo "CodeRabbit review found!"
+              echo "review_completed=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            
+            echo "Attempt $((attempt + 1))/$max_attempts - No CodeRabbit review yet, waiting 30s..."
+            sleep 30
+            attempt=$((attempt + 1))
+          done
+          
+          echo "Timeout reached, proceeding without CodeRabbit review"
+          echo "review_completed=false" >> $GITHUB_OUTPUT
+
+  apply-coderabbit-suggestions:
+    name: 🤖 Apply CodeRabbit Suggestions
+    runs-on: ubuntu-latest
+    needs: [commit-and-pr, wait-for-coderabbit]
+    if: needs.wait-for-coderabbit.outputs.review_completed == 'true'
+    
+    steps:
+      - name: 📂 Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: 🔧 Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: 🤖 Apply CodeRabbit suggestions
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          chmod +x .github/scripts/apply-coderabbit-suggestions.sh
+          .github/scripts/apply-coderabbit-suggestions.sh "${{ needs.commit-and-pr.outputs.pr_number }}"
+
+  summarize-bot-comments:
+    name: 📋 Summarize Bot Comments
+    runs-on: ubuntu-latest
+    needs: [commit-and-pr, apply-coderabbit-suggestions]
+    if: always() && needs.commit-and-pr.outputs.pr_number != ''
+    
+    steps:
+      - name: 📂 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📋 Get and summarize last 3 CodeRabbit comments
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          chmod +x .github/scripts/summarize-bot-comments.sh
+          .github/scripts/summarize-bot-comments.sh "${{ needs.commit-and-pr.outputs.pr_number }}"
+
+      - name: 💬 Comment summary on PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pr_number="${{ needs.commit-and-pr.outputs.pr_number }}"
+          gh pr comment $pr_number --body-file bot_summary.md
+
+  deploy-vercel-preview:
+    name: 🚀 Deploy Vercel Preview
+    runs-on: ubuntu-latest
+    needs: [commit-and-pr, summarize-bot-comments]
+    if: always() && needs.commit-and-pr.outputs.pr_number != ''
+    outputs:
+      frontend_url: ${{ steps.deploy_frontend.outputs.preview_url }}
+      backend_url: ${{ steps.deploy_backend.outputs.preview_url }}
+    
+    steps:
+      - name: 📂 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
+
+      - name: 🎨 Deploy Frontend Preview
+        id: deploy_frontend
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./frontend
+          production: false
+          github-comment: false
+
+      - name: ⚙️ Deploy Backend Preview
+        id: deploy_backend
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_BACKEND_PROJECT_ID }}
+          working-directory: ./backend
+          production: false
+          github-comment: false
+
+      - name: 📋 Output deployment URLs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pr_number="${{ needs.commit-and-pr.outputs.pr_number }}"
+          frontend_url="${{ steps.deploy_frontend.outputs.preview_url }}"
+          backend_url="${{ steps.deploy_backend.outputs.preview_url }}"
+          
+          echo "## 🚀 Vercel Preview Deployment URLs" > deployment_urls.md
+          echo "" >> deployment_urls.md
+          echo "🎨 **Frontend Preview:** $frontend_url" >> deployment_urls.md
+          echo "⚙️ **Backend Preview:** $backend_url" >> deployment_urls.md
+          echo "" >> deployment_urls.md
+          echo "---" >> deployment_urls.md
+          echo "*Deployment abgeschlossen am $(date '+%d.%m.%Y %H:%M:%S')*" >> deployment_urls.md
+          
+          # Output to workflow logs
+          echo "🚀 Deployment URLs:"
+          echo "Frontend: $frontend_url"
+          echo "Backend: $backend_url"
+          
+          # Comment on PR
+          gh pr comment $pr_number --body-file deployment_urls.md
+
+  final-status:
+    name: ✅ Final Status
+    runs-on: ubuntu-latest
+    needs: [commit-and-pr, wait-for-coderabbit, apply-coderabbit-suggestions, summarize-bot-comments, deploy-vercel-preview]
+    if: always()
+    
+    steps:
+      - name: 📊 Workflow Summary
+        run: |
+          echo "## 🎯 Workflow Ergebnis"
+          echo ""
+          echo "✅ **Commit & PR:** ${{ needs.commit-and-pr.result }}"
+          echo "⏳ **CodeRabbit Review:** ${{ needs.wait-for-coderabbit.result }}"
+          echo "🤖 **Suggestions Applied:** ${{ needs.apply-coderabbit-suggestions.result }}"
+          echo "📋 **Comment Summary:** ${{ needs.summarize-bot-comments.result }}"
+          echo "🚀 **Vercel Deployment:** ${{ needs.deploy-vercel-preview.result }}"
+          echo ""
+          if [[ "${{ needs.commit-and-pr.outputs.pr_url }}" != "" ]]; then
+            echo "🔗 **PR URL:** ${{ needs.commit-and-pr.outputs.pr_url }}"
+          fi
+          if [[ "${{ needs.deploy-vercel-preview.outputs.frontend_url }}" != "" ]]; then
+            echo "🎨 **Frontend Preview:** ${{ needs.deploy-vercel-preview.outputs.frontend_url }}"
+          fi
+          if [[ "${{ needs.deploy-vercel-preview.outputs.backend_url }}" != "" ]]; then
+            echo "⚙️ **Backend Preview:** ${{ needs.deploy-vercel-preview.outputs.backend_url }}"
+          fi
