@@ -1,0 +1,581 @@
+workflows:
+  - name: deploy-auto-branch
+    description: Aktueller Branch → PR vs BASE → Diff zeigen → CodeRabbit anwenden (iterativ) → Vercel Preview
+    command: |
+      set -euo pipefail
+
+      BASE="{{base}}"
+      [ -z "${BASE}" ] && BASE="develop"
+      BOT="${BOT:-coderabbitai[bot]}"
+      POLL_SECONDS="${POLL_SECONDS:-15}"
+      TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-420}"
+      MAX_CYCLES="${MAX_CYCLES:-5}"
+      DRY_RUN="${DRY_RUN:-false}"
+      APP_DIR="${APP_DIR:-.}"
+      REQUIRES_LABEL="${REQUIRES_LABEL:-}"
+      SKIP_REBASE="${SKIP_REBASE:-false}"
+
+      # Checks
+      for bin in gh vercel node jq git; do
+        command -v "$bin" >/dev/null || { echo "❌ '$bin' fehlt"; exit 1; }
+      done
+
+      CURR_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+      if [ "$CURR_BRANCH" = "$BASE" ]; then
+        echo "❌ Du bist auf dem BASE-Branch '$BASE'. Bitte auf einem Feature-Branch arbeiten."
+        exit 1
+      fi
+
+      # 0) Upstream holen & Delta sichtbar machen
+      echo "🔄 Fetching origin/$BASE..."
+      git fetch origin "$BASE" || true
+      echo
+      echo "=== 📊 Änderungen gegenüber origin/$BASE (Dateien) ==="
+      git --no-pager diff --name-status "origin/$BASE...HEAD" || true
+      echo
+      echo "=== 📈 Diff-Statistik ==="
+      git --no-pager diff --stat "origin/$BASE...HEAD" || true
+      echo
+      echo "=== 📝 Commits gegenüber origin/$BASE ==="
+      git --no-pager log --oneline --decorate --graph "origin/$BASE..HEAD" | head -20 || true
+      echo
+
+      # 1) Check autodeploy label if required
+      if [ -n "$REQUIRES_LABEL" ]; then
+        echo "🏷️  Checking for required label '$REQUIRES_LABEL'..."
+        HAS_LABEL=$(gh pr view "$CURR_BRANCH" --json labels -q '.labels[].name' 2>/dev/null | grep -cx "$REQUIRES_LABEL" || echo 0)
+        if [ "$HAS_LABEL" != "1" ]; then
+          echo "⏸️  No '$REQUIRES_LABEL' label on PR – skipping deploy"
+          exit 0
+        fi
+        echo "✅ Required label found"
+      fi
+
+      # 2) Commit & Push aktueller Branch
+      echo "🔧 Committing und pushing current branch..."
+      git add -A
+      if ! git diff --cached --quiet; then
+        if [ "$DRY_RUN" != "true" ]; then
+          git commit -m "chore: warp deploy batch $(date +%H:%M)"
+        else
+          echo "🧪 DRY_RUN: would commit changes"
+        fi
+      fi
+      
+      if [ "$DRY_RUN" != "true" ]; then
+        git push -u origin "$CURR_BRANCH"
+      else
+        echo "🧪 DRY_RUN: would push to origin/$CURR_BRANCH"
+      fi
+
+      # 3) PR anlegen/holen
+      echo "🔗 Creating/updating PR..."
+      if gh pr view "$CURR_BRANCH" >/dev/null 2>&1; then
+        echo "ℹ️ PR existiert bereits."
+      else
+        if [ "$DRY_RUN" != "true" ]; then
+          gh pr create --title "🚀 Auto PR: $CURR_BRANCH" --body "Automatisiert via Warp deploy-auto-branch workflow" --base "$BASE" --head "$CURR_BRANCH" --fill
+        else
+          echo "🧪 DRY_RUN: would create PR"
+        fi
+      fi
+
+      PR=$(gh pr view "$CURR_BRANCH" --json number -q .number)
+      PR_URL=$(gh pr view "$CURR_BRANCH" --json url -q .url)
+      echo "🔗 PR #$PR: $PR_URL"
+      echo
+      echo "=== 📊 PR Diff (stat) ==="
+      gh pr diff "$PR" --stat || true
+      echo
+      echo "=== 📄 PR geänderte Dateien ==="
+      gh pr diff "$PR" --name-only || true
+      echo
+
+      # Helper: Anzahl der Suggested-Change-Kommentare zählen
+      count_suggestions() {
+        gh api "repos/$(gh repo view --json owner -q .owner.login)/$(gh repo view --json name -q .name)/pulls/$PR/comments" --paginate \
+          -q '[.[] | select(.user.login=="'"$BOT"'" and (.body|test("```suggestion")))] | length' 2>/dev/null || echo 0
+      }
+
+      # Sicherstellen dass das Apply-Script existiert
+      mkdir -p scripts
+      if [ ! -f scripts/apply_coderabbit_suggestions.js ]; then
+        echo "⚠️  Apply-Script fehlt. Bitte 'warp run create-coderabbit-script' ausführen."
+        exit 1
+      fi
+
+      # 4) Poll → Apply → Commit → Push (iterativ)
+      echo "🤖 Warte auf CodeRabbit Suggestions..."
+      total_applied=0
+      elapsed=0
+      iteration=1
+      cycle=0
+      
+      while [ "$elapsed" -lt "$TIMEOUT_SECONDS" ] && [ "$cycle" -lt "$MAX_CYCLES" ]; do
+        # Warte auf Suggestions
+        while [ "$elapsed" -lt "$TIMEOUT_SECONDS" ]; do
+          cnt=$(count_suggestions)
+          if [ "$cnt" -gt 0 ]; then 
+            echo "✅ $cnt Suggestion(s) gefunden in Iteration $iteration"
+            break
+          fi
+          
+          if [ "$((elapsed % 60))" -eq 0 ] && [ "$elapsed" -gt 0 ]; then
+            echo "⏳ Warte auf CodeRabbit... (${elapsed}s/${TIMEOUT_SECONDS}s)"
+          fi
+          
+          sleep "$POLL_SECONDS"
+          elapsed=$((elapsed + POLL_SECONDS))
+        done
+
+        if [ "$elapsed" -ge "$TIMEOUT_SECONDS" ]; then
+          echo "⚠️  Timeout erreicht: keine Suggested Changes von $BOT."
+          break
+        fi
+
+        # Apply suggestions
+        echo "🔧 Wende Suggestions an..."
+        export PR BOT
+        out=$(node scripts/apply_coderabbit_suggestions.js 2>&1 || echo "APPLIED_COUNT=0")
+        echo "$out"
+        applied=$(echo "$out" | grep -Eo 'APPLIED_COUNT=[0-9]+' | cut -d= -f2 || echo 0)
+        total_applied=$((total_applied + applied))
+
+        if [ "$applied" -gt 0 ] && ! git diff --quiet; then
+          git add -A
+          if [ "$DRY_RUN" != "true" ]; then
+            git commit -m "chore: apply CodeRabbit suggestions (iteration $iteration, $applied changes)"
+            git push
+            echo "📤 Pushed $applied changes from iteration $iteration"
+          else
+            echo "🧪 DRY_RUN: would commit and push $applied changes"
+          fi
+        fi
+
+        sleep "$POLL_SECONDS"
+        elapsed=$((elapsed + POLL_SECONDS))
+        
+        # Check for new suggestions
+        next=$(count_suggestions)
+        if [ "$next" -eq 0 ]; then
+          echo "ℹ️  Keine weiteren Suggestions vorhanden."
+          break
+        fi
+        
+        cycle=$((cycle + 1))
+        iteration=$((iteration + 1))
+        echo "🔄 Iteration $iteration startet... (cycle $cycle/$MAX_CYCLES)"
+      done
+      
+      if [ "$cycle" -ge "$MAX_CYCLES" ]; then
+        echo "ℹ️  Maximum cycles reached ($MAX_CYCLES). Continuing without further auto-fixes."
+      fi
+
+      echo
+      echo "—— 📋 CodeRabbit Snapshot (letzte 3 Kommentare) ——"
+      gh api "repos/$(gh repo view --json owner -q .owner.login)/$(gh repo view --json name -q .name)/pulls/$PR/comments" --paginate \
+        -q '[.[] | select(.user.login=="'"$BOT"'")] | .[-3:][] | "- " + (.path + ":" + ((.line//.original_line|tostring)) + " · " + (.body|split("\n")[0]))' 2>/dev/null || echo "Keine Comments verfügbar"
+      echo "🧮 Insgesamt angewendet: $total_applied Suggestions"
+      echo "🔗 PR: $PR_URL"
+      echo
+
+      # 5) Check CodeRabbit review state
+      echo "🔍 Checking CodeRabbit review state..."
+      OWNER=$(gh repo view --json owner -q .owner.login)
+      NAME=$(gh repo view --json name -q .name)
+      CR_STATE=$(gh api "repos/$OWNER/$NAME/pulls/$PR/reviews" \
+        -q '[.[] | select(.user.login=="'"$BOT"'")] | last | .state' 2>/dev/null || echo "")
+      
+      if [ "$CR_STATE" = "CHANGES_REQUESTED" ]; then
+        echo "⛔ CodeRabbit has CHANGES_REQUESTED set – aborting deploy"
+        exit 1
+      fi
+      echo "✅ CodeRabbit review state: ${CR_STATE:-NONE}"
+
+      # 6) Wait for CI checks to pass
+      echo "🔎 Waiting for successful CI checks..."
+      if [ "$DRY_RUN" != "true" ]; then
+        if ! gh pr checks "$PR" --watch --fail-fast 2>/dev/null; then
+          echo "⚠️  CI checks failed or timed out – proceeding anyway"
+        else
+          echo "✅ All CI checks passed"
+        fi
+      else
+        echo "🧪 DRY_RUN: would wait for CI checks"
+      fi
+
+      # 7) Rebase on BASE before deploy
+      if [ "$SKIP_REBASE" != "true" ]; then
+        echo "🔄 Rebasing on origin/$BASE..."
+        git fetch origin "$BASE"
+        if [ "$DRY_RUN" != "true" ]; then
+          if ! git rebase "origin/$BASE"; then
+            echo "⛔ Rebase conflict. Please resolve conflicts:"
+            echo "   git rebase --continue  (after resolving)"
+            echo "   git rebase --abort     (to cancel)"
+            exit 1
+          fi
+          git push --force-with-lease
+        else
+          echo "🧪 DRY_RUN: would rebase on origin/$BASE"
+        fi
+      else
+        echo "⏩ Rebase skipped (SKIP_REBASE=true)"
+      fi
+
+      # 8) Pre-deploy guards (typecheck/lint/test/build)
+      if [ -f "$APP_DIR/package.json" ]; then
+        echo "🔧 Running pre-deploy guards..."
+        cd "$APP_DIR"
+        
+        if [ "$DRY_RUN" != "true" ]; then
+          if npm run 2>/dev/null | grep -q "typecheck"; then 
+            echo "🔍 Running typecheck..."
+            npm run typecheck || { echo "⛔ typecheck failed"; exit 1; }
+          fi
+          if npm run 2>/dev/null | grep -q "lint"; then 
+            echo "🧹 Running lint..."
+            npm run lint || { echo "⛔ lint failed"; exit 1; }
+          fi
+          if npm run 2>/dev/null | grep -q "test"; then 
+            echo "🧪 Running tests..."
+            npm test -- --watch=false || { echo "⛔ tests failed"; exit 1; }
+          fi
+          if npm run 2>/dev/null | grep -q "build"; then 
+            echo "🏗️  Running build..."
+            npm run build || { echo "⛔ build failed"; exit 1; }
+          fi
+        else
+          echo "🧪 DRY_RUN: would run pre-deploy guards"
+        fi
+        cd - >/dev/null
+      fi
+
+      # 9) Vercel Preview Deploy
+      echo "🚀 Deploying Vercel Preview..."
+      DEPLOY_URL=""
+      if command -v vercel >/dev/null; then
+        if [ "$DRY_RUN" != "true" ]; then
+          cd "$APP_DIR"
+          DEPLOY_OUTPUT=$(vercel --confirm 2>&1 || echo "DEPLOY_FAILED")
+          if echo "$DEPLOY_OUTPUT" | grep -q "DEPLOY_FAILED"; then
+            echo "⚠️  Vercel deploy failed"
+          else
+            DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep -E 'https?://[^\s]+' | tail -1 || echo "")
+            echo "✅ Deploy successful: $DEPLOY_URL"
+          fi
+          cd - >/dev/null
+        else
+          echo "🧪 DRY_RUN: would deploy to Vercel"
+          DEPLOY_URL="https://example-preview-url.vercel.app"
+        fi
+      else
+        echo "⚠️  Vercel CLI not installed – skipping preview deploy"
+      fi
+
+      # 10) Comment preview URL on PR
+      if [ -n "$DEPLOY_URL" ] && [ -n "$PR" ]; then
+        if [ "$DRY_RUN" != "true" ]; then
+          gh pr comment "$PR" -b "🚀 **Preview deployed**: $DEPLOY_URL" || echo "⚠️  Failed to comment on PR"
+        else
+          echo "🧪 DRY_RUN: would comment preview URL on PR"
+        fi
+      fi
+      
+      echo "✅ Workflow completed!"
+      echo "📊 Summary: $total_applied suggestions applied in $cycle cycles"
+    arguments:
+      - name: base
+        default: develop
+
+  # Bonus: Nur die Änderungen vs. BASE schnell ansehen (ohne Deploy)
+  - name: show-diff-vs-base
+    description: Zeigt Delta des aktuellen Branches gegenüber BASE (Dateien, Stat, letzte Commits)
+    command: |
+      set -euo pipefail
+      BASE="{{base}}"
+      [ -z "${BASE}" ] && BASE="develop"
+      
+      echo "🔄 Fetching origin/$BASE..."
+      git fetch origin "$BASE" || true
+      echo
+      echo "=== 📊 Änderungen gegenüber origin/$BASE (Dateien) ==="
+      git --no-pager diff --name-status "origin/$BASE...HEAD" || true
+      echo
+      echo "=== 📈 Diff-Statistik ==="
+      git --no-pager diff --stat "origin/$BASE...HEAD" || true
+      echo
+      echo "=== 📝 Commits gegenüber origin/$BASE ==="
+      git --no-pager log --oneline --decorate --graph "origin/$BASE..HEAD" | head -20 || true
+      echo
+      echo "🌿 Aktueller Branch: $(git rev-parse --abbrev-ref HEAD)"
+      echo "📍 BASE: origin/$BASE"
+    arguments:
+      - name: base
+        default: develop
+
+  # Helper: CodeRabbit Apply-Script erstellen
+  - name: create-coderabbit-script
+    description: Erstellt das Node.js Script für CodeRabbit Suggestion Application
+    command: |
+      set -euo pipefail
+      mkdir -p scripts
+      
+      cat > scripts/apply_coderabbit_suggestions.js << 'EOF'
+      const { execSync } = require('child_process');
+      const fs = require('fs');
+
+      function sh(cmd) { 
+        try {
+          return execSync(cmd, { encoding: 'utf8' }); 
+        } catch (error) {
+          console.error(`Command failed: ${cmd}`);
+          throw error;
+        }
+      }
+
+      try {
+        const repo = JSON.parse(sh('gh repo view --json owner,name'));
+        const owner = repo.owner.login;
+        const name  = repo.name;
+        const pr    = process.env.PR;
+        const bot   = process.env.BOT || 'coderabbitai[bot]';
+
+        if (!pr) {
+          console.error('PR environment variable not set');
+          process.exit(1);
+        }
+
+        console.log(`Fetching suggestions from ${bot} for PR #${pr}...`);
+
+        const comments = JSON.parse(sh(`gh api repos/${owner}/${name}/pulls/${pr}/comments --paginate`));
+
+        const suggestions = comments
+          .filter(c => c.user && c.user.login === bot)
+          .map(c => {
+            const match = c.body && c.body.match(/```suggestion\s*\n([\s\S]*?)```/m);
+            if (!match) return null;
+            
+            const start = c.start_line || c.original_start_line || c.line || c.original_line;
+            const end   = c.line || c.original_line || start;
+            
+            if (!c.path || !start || !end) {
+              console.warn(`Skipping suggestion ${c.id}: missing path/line info`);
+              return null;
+            }
+            
+            return {
+              path: c.path,
+              start: Number(start),
+              end: Number(end),
+              text: match[1].replace(/\r/g, ''),
+              id: c.id
+            };
+          })
+          .filter(Boolean);
+
+        if (!suggestions.length) {
+          console.log('No suggestions found');
+          console.log('APPLIED_COUNT=0');
+          process.exit(0);
+        }
+
+        console.log(`Found ${suggestions.length} suggestions to apply`);
+
+        // Dateiweise patchen, von unten nach oben (stabile Zeilen-Offsets)
+        const byFile = {};
+        for (const s of suggestions) {
+          if (!byFile[s.path]) byFile[s.path] = [];
+          byFile[s.path].push(s);
+        }
+
+        let applied = 0;
+        for (const [path, fileSuggestions] of Object.entries(byFile)) {
+          if (!fs.existsSync(path)) { 
+            console.warn(`Skip missing file: ${path}`); 
+            continue; 
+          }
+          
+          console.log(`Applying ${fileSuggestions.length} suggestions to ${path}...`);
+          
+          const lines = fs.readFileSync(path, 'utf8').split('\n');
+          
+          // Sort by line number DESC (bottom to top) to maintain stable offsets
+          fileSuggestions.sort((a, b) => (b.start - a.start) || (b.end - a.end));
+          
+          for (const s of fileSuggestions) {
+            try {
+              const startIdx = Math.max(1, s.start) - 1; // Convert to 0-based
+              const endIdx = Math.max(1, s.end) - 1;
+              
+              const newLines = s.text.replace(/\n$/, '').split('\n');
+              
+              // Replace the range with new content
+              lines.splice(startIdx, (endIdx - startIdx + 1), ...newLines);
+              
+              console.log(`✅ Applied suggestion ${s.id} to ${path}:${s.start}-${s.end}`);
+              applied++;
+            } catch (error) {
+              console.warn(`❌ Failed to apply suggestion ${s.id} to ${path}:${s.start}-${s.end} - ${error.message}`);
+            }
+          }
+          
+          // Write back the modified file
+          fs.writeFileSync(path, lines.join('\n'), 'utf8');
+        }
+        
+        console.log(`Successfully applied ${applied} suggestions`);
+        console.log(`APPLIED_COUNT=${applied}`);
+        
+      } catch (error) {
+        console.error(`Script error: ${error.message}`);
+        console.log('APPLIED_COUNT=0');
+        process.exit(1);
+      }
+      EOF
+
+      echo "✅ CodeRabbit apply script created at scripts/apply_coderabbit_suggestions.js"
+      echo "📝 Make sure to run 'chmod +x scripts/apply_coderabbit_suggestions.js' if needed"
+
+  # Quick CodeRabbit status check
+  - name: check-coderabbit
+    description: Zeigt aktuellen CodeRabbit Status für die aktuelle PR
+    command: |
+      set -euo pipefail
+      
+      CURR_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+      BOT="${BOT:-coderabbitai[bot]}"
+      
+      if ! gh pr view "$CURR_BRANCH" >/dev/null 2>&1; then
+        echo "❌ Keine PR für Branch '$CURR_BRANCH' gefunden"
+        exit 1
+      fi
+      
+      PR=$(gh pr view "$CURR_BRANCH" --json number -q .number)
+      PR_URL=$(gh pr view "$CURR_BRANCH" --json url -q .url)
+      
+      echo "🔗 PR #$PR: $PR_URL"
+      echo "🌿 Branch: $CURR_BRANCH"
+      echo
+      
+      # Count suggestions
+      cnt=$(gh api "repos/$(gh repo view --json owner -q .owner.login)/$(gh repo view --json name -q .name)/pulls/$PR/comments" --paginate \
+        -q '[.[] | select(.user.login=="'"$BOT"'" and (.body|test("```suggestion")))] | length' 2>/dev/null || echo 0)
+      
+      echo "🤖 CodeRabbit Suggestions: $cnt"
+      echo
+      echo "=== 💬 Letzte CodeRabbit Kommentare ==="
+      gh api "repos/$(gh repo view --json owner -q .owner.login)/$(gh repo view --json name -q .name)/pulls/$PR/comments" --paginate \
+        -q '[.[] | select(.user.login=="'"$BOT"'")] | .[-3:][] | "📝 " + (.created_at|strftime("%H:%M")) + " - " + (.path // "general") + ": " + (.body|split("\n")[0]|.[0:80])' 2>/dev/null || echo "Keine Comments verfügbar"
+
+  # Emergency rollback workflow
+  - name: rollback-last
+    description: Revert letzten Deploy-Commit (lokal & remote) - für Notfälle
+    command: |
+      set -euo pipefail
+      
+      echo "🚨 Emergency Rollback - Reverting last commit..."
+      
+      CURR_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+      LAST_COMMIT=$(git rev-parse HEAD)
+      COMMIT_MSG=$(git log -1 --pretty=format:"%s" HEAD)
+      
+      echo "🌿 Current branch: $CURR_BRANCH"
+      echo "📝 Last commit: $LAST_COMMIT"
+      echo "💬 Commit message: $COMMIT_MSG"
+      echo
+      
+      read -p "⚠️  Are you sure you want to revert this commit? (y/N): " -r
+      if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "❌ Rollback cancelled"
+        exit 0
+      fi
+      
+      echo "🔄 Reverting commit..."
+      if ! git revert --no-edit "$LAST_COMMIT"; then
+        echo "⛔ Revert conflict detected. Manual intervention required:"
+        echo "   - Resolve conflicts in the affected files"
+        echo "   - Run: git add <files> && git revert --continue"
+        echo "   - Or cancel: git revert --abort"
+        exit 1
+      fi
+      
+      echo "📤 Pushing revert commit..."
+      git push
+      
+      echo "✅ Rollback completed successfully"
+      echo "📋 Reverted commit: $LAST_COMMIT"
+      echo "🔗 New commit: $(git rev-parse HEAD)"
+
+  # Advanced workflow with all production features
+  - name: deploy-production-ready
+    description: "🚀 Production-ready deploy mit allen Sicherheitsfeatures (DRY_RUN, Labels, Guards, etc.)"
+    command: |
+      set -euo pipefail
+      
+      echo "🎯 Production-Ready Deploy Workflow"
+      echo "===================================="
+      echo
+      
+      # All environment variables with defaults
+      BASE="{{base}}"
+      [ -z "${BASE}" ] && BASE="develop"
+      DRY_RUN="{{dry_run}}"
+      [ -z "${DRY_RUN}" ] && DRY_RUN="false"
+      REQUIRES_LABEL="{{label}}"
+      SKIP_REBASE="{{skip_rebase}}"
+      [ -z "${SKIP_REBASE}" ] && SKIP_REBASE="false"
+      MAX_CYCLES="{{max_cycles}}"
+      [ -z "${MAX_CYCLES}" ] && MAX_CYCLES="5"
+      APP_DIR="{{app_dir}}"
+      [ -z "${APP_DIR}" ] && APP_DIR="."
+      
+      # Show configuration
+      echo "📋 Configuration:"
+      echo "   BASE: $BASE"
+      echo "   DRY_RUN: $DRY_RUN"
+      echo "   REQUIRES_LABEL: ${REQUIRES_LABEL:-none}"
+      echo "   SKIP_REBASE: $SKIP_REBASE"
+      echo "   MAX_CYCLES: $MAX_CYCLES"
+      echo "   APP_DIR: $APP_DIR"
+      echo
+      
+      if [ "$DRY_RUN" = "true" ]; then
+        echo "🧪 DRY_RUN MODE - No actual changes will be made"
+        echo
+      fi
+      
+      # Export all variables and run main workflow
+      export BASE DRY_RUN REQUIRES_LABEL SKIP_REBASE MAX_CYCLES APP_DIR
+      
+      # Run the main deploy workflow logic
+      warp run deploy-auto-branch --base "$BASE"
+      
+    arguments:
+      - name: base
+        default: develop
+      - name: dry_run
+        default: "false"
+      - name: label
+        default: ""
+      - name: skip_rebase
+        default: "false"
+      - name: max_cycles
+        default: "5"
+      - name: app_dir
+        default: "."
+
+  # Quick dry-run test
+  - name: test-deploy
+    description: "🧪 Test-Lauf des Deploy-Workflows (DRY_RUN=true)"
+    command: |
+      echo "🧪 Running deploy workflow in DRY_RUN mode..."
+      echo
+      export DRY_RUN="true"
+      export MAX_CYCLES="2"
+      export SKIP_REBASE="true"
+      
+      warp run deploy-auto-branch --base "{{base}}"
+    arguments:
+      - name: base
+        default: develop
