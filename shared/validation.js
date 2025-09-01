@@ -44,10 +44,11 @@ const VALID_STRUCTURES = ["epics_stories", "only_stories"];
  * @returns {string} - Cleaned string value
  */
 function sanitizeInput(value) {
-  if (value === null || value === undefined) {
-    return "";
-  }
-  return String(value).trim();
+  if (value == null) return "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") return String(value).trim();
+  // Disallow objects/arrays/dates/symbols to avoid accidental passes like "[object Object]"
+  return "";
 }
 
 /**
