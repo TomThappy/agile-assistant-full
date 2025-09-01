@@ -28,3 +28,19 @@ function testFunction(x) {
 ```
 
 This file will trigger the workflow when committed.
+
+## Additional Test Content
+
+```typescript
+// More test code with potential issues
+let data: any = null;
+if(data == undefined) {
+    console.log('Data is not defined')  // Missing semicolon
+}
+
+// Using 'any' type
+// Using loose equality (==) instead of strict (===)
+// Missing semicolon
+```
+
+**Status**: Updated for workflow testing at $(date)
