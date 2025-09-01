@@ -2,15 +2,17 @@
 
 This is a test file to verify the CodeRabbit integration workflow.
 
-## Features to test:
+## Features to test
 
-1. Automatic commit and push
-2. PR creation
-3. CodeRabbit review waiting
-4. Bot comment summarization
-5. Vercel preview deployment
+- [ ] Automatic commit and push
+- [ ] PR creation
+- [ ] CodeRabbit review waiting
+- [ ] Bot comment summarization
+- [ ] Vercel preview deployment
 
 ## Test Code
+
+> Note: The following JavaScript snippet intentionally violates lint rules (var, spacing, semicolons) to exercise the review workflow. Do not use in production.
 
 ```javascript
 // This code has some intentional issues for CodeRabbit to find
@@ -31,6 +33,8 @@ This file will trigger the workflow when committed.
 
 ## Additional Test Content
 
+> Note: The following TypeScript snippet intentionally uses `any`, loose equality, and missing semicolons for testing.
+
 ```typescript
 // More test code with potential issues
 let data: any = null;
@@ -43,4 +47,4 @@ if(data == undefined) {
 // Missing semicolon
 ```
 
-**Status**: Updated for workflow testing at $(date)
+**Status**: Updated for workflow testing at `$(date)`
