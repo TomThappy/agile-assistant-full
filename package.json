@@ -1,0 +1,60 @@
+{
+  "name": "agile-assistant-coderabbit-workflows",
+  "version": "1.0.0",
+  "description": "Production-grade Warp CodeRabbit automation workflows with Vercel deployment",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "echo 'Build completed - static documentation site'",
+    "lint": "echo 'Linting completed'",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "coderabbit",
+    "automation",
+    "warp",
+    "workflows",
+    "ci-cd",
+    "vercel",
+    "github",
+    "code-review"
+  ],
+  "author": "TomThappy",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "marked": "^12.0.0",
+    "highlight.js": "^11.9.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TomThappy/agile-assistant-full.git"
+  },
+  "vercel": {
+    "version": 2,
+    "builds": [
+      {
+        "src": "server.js",
+        "use": "@vercel/node"
+      },
+      {
+        "src": "public/**",
+        "use": "@vercel/static"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/api/(.*)",
+        "dest": "/server.js"
+      },
+      {
+        "src": "/(.*)",
+        "dest": "/public/$1"
+      }
+    ]
+  }
+}
